@@ -10,6 +10,7 @@ export const CheckOutForm = () => {
 
   const stripe = useStripe();
   const elements = useElements();
+
   const handleOnChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
