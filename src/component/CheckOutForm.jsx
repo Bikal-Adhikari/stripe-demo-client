@@ -1,14 +1,50 @@
 import { useState } from "react";
+import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import axios from "axios";
 
+const apiEp = import.meta.env.VITE_APP_server;
+const paymentEp = apiEp + "/create-stripe-payments";
+const paymentSuccessEp = apiEp + "/confirm-order";
 export const CheckOutForm = () => {
   const [form, setForm] = useState({});
+
+  const stripe = useStripe();
+  const elements = useElements();
   const handleOnChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
   };
-  const handleOnSubmit = (e) => {
+  const handleOnSubmit = async (e) => {
     e.preventDefault();
-    console.log(form);
+    // initiate the payment
+    const payload = {
+      amount: 25,
+      currency: "usd",
+      paymentMethod: "card",
+    };
+    // call payment initiation api
+    const { data } = await axios.post(paymentEp, payload);
+    //capture clientsecret
+    console.log(data.clientSecret);
+
+    const clientSecret = data.clientSecret;
+    // create a payment intent
+    const { paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: elements.getElement(CardElement),
+        billing_details: {
+          name: form.name,
+          email: form.email,
+        },
+      },
+    });
+    // console.log(status);
+    if (paymentIntent.status === "succeeded") {
+      const confirmResponse = await axios.post(paymentSuccessEp, paymentIntent);
+      console.log(confirmResponse);
+      alert(confirmResponse.data.message);
+      return;
+    }
   };
   return (
     <div>
@@ -31,7 +67,9 @@ export const CheckOutForm = () => {
             onChange={handleOnChange}
           />
         </div>
-        <h3>Card Element</h3>
+        <div>
+          <CardElement />
+        </div>
         <button type="submit">Submit</button>
       </form>
     </div>
